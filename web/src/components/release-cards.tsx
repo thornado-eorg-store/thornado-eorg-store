@@ -12,10 +12,13 @@ export function CoverArt({
   release: Release;
   subtle?: boolean;
 }) {
+  const imagen = release.coverImage
+    ? `url(${release.coverImage})` // portada subida desde /estudio
+    : `url(/covers/${release.slug}.svg)`; // SVG generativo demo
   return (
     <div className="relative flex aspect-square items-center justify-center overflow-hidden"
       style={{
-        backgroundImage: `url(/covers/${release.slug}.svg), linear-gradient(135deg, ${release.palette[0]}, ${release.palette[1]})`,
+        backgroundImage: `${imagen}, linear-gradient(135deg, ${release.palette[0]}, ${release.palette[1]})`,
         backgroundSize: "cover",
         backgroundPosition: "center",
       }}

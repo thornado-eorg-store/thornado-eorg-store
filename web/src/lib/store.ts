@@ -1,15 +1,21 @@
 // ============================================================
 // Capa de datos del servidor.
 // Fuentes (auto-detectada):
-//  1. PostgreSQL vía Prisma (cuando DATABASE_URL está configurada)
-//  2. Catálogo demo estático (src/lib/catalog.ts) — fallback total
-// Todas las funciones son async y seguras para Cache Components.
+//   1. PostgreSQL vía Prisma (cuando DATABASE_URL está configurada)
+//   2. Catálogo demo estático (src/lib/catalog.ts) — fallback total
+// ⊕ Overlay del Modo Edición (web/src/lib/estudio/persistence.ts):
+//   releases creados o editados desde /estudio se encima a la base.
+//
+// Todo lo público vive en caché propia de Cache Components, etiquetada
+// como "catalog". Las mutaciones del estudio llaman revalidateTag()
+// y los cambios se reflejan al siguiente request.
 // ============================================================
+import { cacheTag } from "next/cache";
 import { getDb } from "./db";
+import { loadEstudioState } from "./estudio/persistence";
 import {
   allReleases as demoAllReleases,
   getArtist as demoGetArtist,
-  getRelease as demoGetRelease,
   releases as demoReleases,
   type Release,
   type ArtistBio,
@@ -19,8 +25,11 @@ import {
 // Re-export de los tipos del catálogo para las páginas que buscan en "@/lib/store".
 export type { Release, ArtistBio, MasterStatus } from "./catalog";
 
-export async function allReleases(): Promise<Release[]> {
+// ---------- base (DB o demo) ----------
+
+async function baseAllReleases(): Promise<Release[]> {
   "use cache";
+  cacheTag("catalog");
   const db = getDb();
   if (!db) return demoAllReleases();
   try {
@@ -36,24 +45,49 @@ export async function allReleases(): Promise<Release[]> {
   }
 }
 
+// ---------- overlay del estudio ----------
+
+function mergeOverlay(base: Release[], overrides: Release[]): Release[] {
+  const map = new Map<string, Release>();
+  for (const r of base) map.set(r.slug, r);
+  for (const o of overrides) {
+    if (!o || typeof o.slug !== "string") continue;
+    map.set(o.slug, o); // snapshot completo del estudio gana sobre la base
+  }
+  return Array.from(map.values()).sort(
+    (a, b) => b.year - a.year || a.title.localeCompare(b.title)
+  );
+}
+
+// ---------- catálogo público ----------
+
+export async function allReleases(): Promise<Release[]> {
+  "use cache";
+  cacheTag("catalog");
+  const [base, estudio] = await Promise.all([baseAllReleases(), loadEstudioState()]);
+  return mergeOverlay(base, estudio.releases).filter((r) => !r.hidden);
+}
+
 export async function getRelease(slug: string): Promise<Release | undefined> {
   "use cache";
-  const db = getDb();
-  if (!db) return demoGetRelease(slug);
-  try {
-    const row = await db.release.findUnique({
-      where: { slug },
-      include: { artist: true, label: true, tracks: true, products: true },
-    });
-    return row ? rowToRelease(row) : demoGetRelease(slug);
-  } catch (err) {
-    console.error("[store] error leyendo release:", err);
-    return demoGetRelease(slug);
-  }
+  cacheTag("catalog");
+  const [base, estudio] = await Promise.all([baseAllReleases(), loadEstudioState()]);
+  return mergeOverlay(base, estudio.releases)
+    .filter((r) => !r.hidden)
+    .find((r) => r.slug === slug);
 }
+
+/** Versión admin: incluye ocultos y overrides; sin caché propia. */
+export async function allReleasesAdmin(): Promise<Release[]> {
+  const [base, estudio] = await Promise.all([baseAllReleases(), loadEstudioState()]);
+  return mergeOverlay(base, estudio.releases);
+}
+
+// ---------- artistas y filtros ----------
 
 export async function getArtist(slug: string): Promise<ArtistBio | undefined> {
   "use cache";
+  cacheTag("catalog");
   const db = getDb();
   if (!db) return demoGetArtist(slug);
   try {
@@ -74,11 +108,13 @@ export async function getArtist(slug: string): Promise<ArtistBio | undefined> {
 
 export async function releasesByTag(tag: string): Promise<Release[]> {
   "use cache";
+  cacheTag("catalog");
   return (await allReleases()).filter((r) => r.tags.includes(tag));
 }
 
 export async function releasesByArtist(artistSlug: string): Promise<Release[]> {
   "use cache";
+  cacheTag("catalog");
   return (await allReleases()).filter((r) => r.artistSlug === artistSlug);
 }
 
@@ -166,7 +202,7 @@ function rowToRelease(row: DbRelease): Release {
   };
 }
 
-function mapMasterStatus(s: string): Exclude<MasterStatus, never> {
+function mapMasterStatus(s: string): MasterStatus {
   if (s === "VERIFIED_LOSSLESS") return "VERIFIED_LOSSLESS";
   if (s === "UNVERIFIED") return "UNVERIFIED";
   return "NEEDS_REVIEW"; // FAKE_LOSSLESS / NEEDS_REVIEW jamás se muestran como verificados

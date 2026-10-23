@@ -64,6 +64,7 @@ su variable de entorno (o revisa `/api/health` para ver el estado).
 | `DATABASE_URL` | Catálogo real desde Postgres (Prisma). Sin ella, catálogo demo estático. | Neon (neon.tech, gratis): crear proyecto Postgres → copiar connection string → `npx prisma db push` |
 | `STRIPE_SECRET_KEY` | Checkout real con Stripe (empezar con `sk_test_…`). Sin ella, pagos simulados. | dashboard.stripe.com → Developers → API keys (modo test) |
 | `NEXT_PUBLIC_SITE_URL` | URLs de retorno correctas al Stripe Checkout y portadas en Stripe. | `https://thornado-eorg-store.vercel.app` |
+| `ESTUDIO_PASSWORD` | Define tu contraseña del panel de mantenimiento `/estudio`. Sin ella usa la provisional `thornado-2026` (cámbiala antes de publicar). | Escoge una fuerte; pégala tal cual en Vercel |
 
 ## Roadmap
 

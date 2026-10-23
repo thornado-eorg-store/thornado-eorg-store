@@ -37,6 +37,10 @@ export interface Release {
   palette: [string, string]; // gradiente futurista de la caratula
   glyph?: string; // glifo de portada improvisado (demo F1)
   tracks: TrackSpec[];
+  /** Portada subida desde /estudio (data URL). Gana sobre el SVG demo. */
+  coverImage?: string;
+  /** Oculto para el público; sigo editable en /estudio. */
+  hidden?: boolean;
 }
 
 export interface ArtistBio {

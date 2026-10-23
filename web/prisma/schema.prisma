@@ -356,3 +356,14 @@ model Collection {
 
   releases Release[] @relation("CollectionReleases")
 }
+
+// ---------- Estudio interno (panel /estudio) ----------
+
+// Documento único con el estado del modo edición: releases creados o
+// modificados desde el panel (snapshot completo). Cuando DATABASE_URL
+// esté activa, aquí vive la persistencia de las ediciones.
+model EstudioState {
+  id        String   @id        // fijo: "estudio-releases"
+  releases  Json
+  updatedAt DateTime @updatedAt
+}

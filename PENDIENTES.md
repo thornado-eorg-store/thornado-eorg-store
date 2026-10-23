@@ -5,18 +5,20 @@ Registro vivo de tareas. Última actualización: 2026-10-23 (v0.2 desplegada).
 ## 🔴 Alta prioridad (confirmadas con el artista)
 
 ### 1. Modo Edición — panel privado `/estudio`
-> Pedido por el artista el 2026-10-23. NO visible al público.
+> ✅ **Construido y desplegado (v0.3).** Falta afinar:
 
-- Ruta `/estudio` protegida con contraseña (env var `ESTUDIO_PASSWORD` en
-  Vercel; cookie firmada). Sin sitemap / `noindex` / sin enlaces públicos.
-- Formularios en español: crear/editar/ocultar releases, tracklist,
-  **precios (digital y vinilo)**, textos editoriales, géneros y tags.
-- **Subida de miniaturas/portadas** (fase 1: guardar en BD Postgres;
-  fase 2: S3/R2 cuando ese servicio esté activo).
-- Mantenimiento: ocultar releases, marcar masters VERIFIED tras QA,
-  re-publicación instantánea (invalidar caché con `revalidateTag`).
-- Decisión: opción A (panel propio), descartadas Prisma Studio (local,
-  sin uploads) y CMS externo (costo/complejidad).
+- Acceso con contraseña: funcional. Provisional **`thornado-2026`** —
+  fijar la definitiva con `ESTUDIO_PASSWORD` en Vercel.
+- Formularios: crear/editar releases, precios (digital/vinilo), textos,
+  géneros/tags, paletas, tracklist editable y subida de portadas (la
+  imagen viaja como data URL en el estado del estudio).
+- Visibilidad: mostrar/ocultar releases desde el dashboard ("Ver ↗"
+  abre la ficha pública).
+- Estado de persistencia visible en el dashboard: Postgres (cuando
+  DATABASE_URL esté activa) o archivo local/temporal.
+- **Pendiente**: activar DATABASE_URL para que las ediciones persistan
+  en producción (hoy: local ✓ · en Vercel sin BD queda temporal) y
+  gestión de imágenes por lote / imágenes de tracks (fase 2).
 
 ### 2. Activar base de datos real (cuenta del artista)
 - Crear proyecto gratis en neon.tech → copiar connection string →
