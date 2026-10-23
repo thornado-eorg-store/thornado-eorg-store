@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { SiteHeader } from "@/components/site-header";
 import { PlayerProvider, PlayerBar } from "@/components/player";
+import { getSiteConfig } from "@/lib/store";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -23,13 +24,17 @@ export const metadata: Metadata = {
     "Tienda oficial de THORNADO EORG: compositor, arreglista y productor con música 100% generada con IA en Suno modo Premier. Masters lossless verificados espectralmente, Hi-Res 24-bit, DSD y vinilos.",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  const config = await getSiteConfig();
   return (
     <html
       lang="es"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="flex min-h-full flex-col font-sans text-zinc-100">
+      <body
+        data-bg={config.theme}
+        className="flex min-h-full flex-col font-sans text-zinc-100"
+      >
         <PlayerProvider>
           <SiteHeader />
           <main className="flex-1">{children}</main>
@@ -37,19 +42,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             <p className="font-mono tracking-wider text-cyan-300/60">
               THORNADO EORG
             </p>
+            <p className="mt-2">{config.texts.footerTagline}</p>
             <p className="mt-2">
-              Música 100% generada con IA — Suno, modo Premier · masterizada y
-              verificada espectralmente · 90% de cada compra va directo al
-              artista
-            </p>
-            <p className="mt-2">
-              <a
-                href="#"
-                className="text-fuchsia-300/80 hover:underline"
-              >
-                «Día del estudio»: un día al mes, 0% de comisión
+              <a href="/contacto" className="text-fuchsia-300/80 hover:underline">
+                Contacto
               </a>{" "}
-              · demo F1 sin backend
+              · tienda oficial con pagos y descargas
             </p>
           </footer>
           <PlayerBar />

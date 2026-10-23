@@ -42,10 +42,23 @@ export interface TrackRow {
   bitDepth: string; // "" | "16" | "24"
   sampleRateHz: string; // "" | "44100" | "48000" | "96000" | "192000"
   status: MasterStatus;
+  /** Identificador estable de la fila en el formulario (para parear el audio aunque se quiten filas). */
+  uid?: string;
+  /** El artista marcó «quitar audio» en esta fila (viaja en el JSON del formulario). */
+  audioRemove?: boolean;
 }
 
 export function emptyTrackRow(): TrackRow {
-  return { title: "", duration: "", bpm: "", musicalKey: "", bitDepth: "24", sampleRateHz: "48000", status: "UNVERIFIED" };
+  return {
+    title: "",
+    duration: "",
+    bpm: "",
+    musicalKey: "",
+    bitDepth: "24",
+    sampleRateHz: "48000",
+    status: "UNVERIFIED",
+    uid: `u${Math.random().toString(36).slice(2, 10)}`,
+  };
 }
 
 /** Convierte un título en slug: minúsculas, sin acentos, guiones. */

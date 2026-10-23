@@ -1,30 +1,43 @@
 # PENDIENTES — THORNADO EORG store
 
-Registro vivo de tareas. Última actualización: 2026-10-23 (v0.2 desplegada).
+Registro vivo de tareas. Última actualización: 2026-10-23 (v0.4 desplegada).
+
+## ✅ Resuelto en v0.4 (los 6 reportes del artista)
+
+1. **Carga de audio** → cada pista del editor tiene su input «🎧 Audio del
+   preview»: se sube MP3/M4A/WAV/FLAC, se reproduce en la ficha pública con
+   botón ▶/❚❚ y barra de progreso real.
+2. **Fallo al guardar (te sacaba de la página)** → causa raíz: el límite del
+   body de Server Actions era 1 MB y la portada lo rebasaba. Corregido
+   (`bodySizeLimit: 24mb`), límites re-alineados (portada ≤ 3 MB, audio
+   ≤ 10 MB/pista, total 20 MB por guardado) y acción de guardado blindada
+   con try/catch + pantalla amable de error en el panel.
+3. **Cambiar textos de la portada** → `/estudio/apariencia`: titular,
+   subtítulo, botones, franja de valor, destacado y pie de página editables.
+4. **Reubicar elementos de la portada** → orden de secciones (▲/▼) en
+   `/estudio/apariencia`.
+5. **Contacto** → página pública `/contacto` con formulario + bandeja
+   `/estudio/mensajes` (marca leído/sin leer, borrar, contador en dashboard).
+6. **Fondo más apropiado para música** → tres fondos elegibles en
+   `/estudio/apariencia`: Aurora Neón (azul-noche con estrellas), Carbón
+   Elegante y Vía Estelar. Ya no es negro plano.
 
 ## 🔴 Alta prioridad (confirmadas con el artista)
 
-### 1. Modo Edición — panel privado `/estudio`
-> ✅ **Construido y desplegado (v0.3).** Falta afinar:
-
-- Acceso con contraseña: funcional. Provisional **`thornado-2026`** —
-  fijar la definitiva con `ESTUDIO_PASSWORD` en Vercel.
-- Formularios: crear/editar releases, precios (digital/vinilo), textos,
-  géneros/tags, paletas, tracklist editable y subida de portadas (la
-  imagen viaja como data URL en el estado del estudio).
-- Visibilidad: mostrar/ocultar releases desde el dashboard ("Ver ↗"
-  abre la ficha pública).
-- Estado de persistencia visible en el dashboard: Postgres (cuando
-  DATABASE_URL esté activa) o archivo local/temporal.
-- **Pendiente**: activar DATABASE_URL para que las ediciones persistan
-  en producción (hoy: local ✓ · en Vercel sin BD queda temporal) y
-  gestión de imágenes por lote / imágenes de tracks (fase 2).
-
-### 2. Activar base de datos real (cuenta del artista)
+### 1. Activar base de datos real (cuenta del artista)
 - Crear proyecto gratis en neon.tech → copiar connection string →
   pegarla como `DATABASE_URL` en Vercel → redeploy → `npx prisma db push`.
-- El catálogo actual es demo estático; la capa de datos ya está lista
-  para alternar a Postgres automáticamente.
+- Sin BD: en Vercel las ediciones del panel guardan en carpeta temporal
+  del serverless y **se pierden al reiniciar** (el dashboard lo avisa).
+  Con BD: todo persiste (releases, apariencia y mensajes de contacto).
+- Tras `db push`, los límites de audio por guardado podrían ampliarse con
+  almacenamiento externo (ver §2).
+
+### 2. Migrar preview audio → almacenamiento externo (fase 2)
+- Hoy el preview se guarda como data URL dentro del estado (≤ 10 MB local;
+  en Vercel limita la plataforma ~4.5 MB por request, capado a ~3 MB).
+- Con almacenamiento (R2/S3/Bunny) se guarda el archivo y la ficha apunta
+  a una URL: sin límites prácticos y descargas maestras con URL firmada.
 
 ### 3. Activar pagos reales en modo test (cuenta del artista)
 - dashboard.stripe.com → API keys (`sk_test_…`) → `STRIPE_SECRET_KEY`
@@ -32,12 +45,16 @@ Registro vivo de tareas. Última actualización: 2026-10-23 (v0.2 desplegada).
 - Añadir también `NEXT_PUBLIC_SITE_URL=https://thornado-eorg-store.vercel.app`
   para las URLs de retorno del checkout.
 
-## 🟡 Siguientes fases (roadmap F1→F2)
+### 4. Contraseña definitiva del panel
+- Provisional **`thornado-2026`** (funciona mientras `ESTUDIO_PASSWORD`
+  esté sin definir). Fijar la definitiva en Vercel y destruir la provisional.
 
-- Entregar compras por URL firmada (S3/R2 + emails) — requiere cuenta
-  de storage del artista.
+## 🟡 Fases futuras
+
 - Webhooks de Stripe (`STRIPE_WEBHOOK_SECRET`) para confirmar pagos.
 - Conectar el worker de ingest a diario (`workers/ingest.mjs`) y
   publicar masters QA en la BD.
 - Escaneo de subcarpetas por release + release.json en el pipeline.
-- Mensaje directo al artista (F2) y notas completas del magazine (F2).
+- Portadas/sesión de imágenes por lote (fase 2).
+- Notificaciones de mensajes nuevos (correo diario con resumen).
+- Magazine: notas completas (F2).

@@ -201,6 +201,7 @@ export default async function ReleasePage({
                       release: release.title,
                       spec: specLabel(t),
                       palette: release.palette,
+                      audioUrl: t.previewUrl,
                     }}
                   />
                   <div className="min-w-0 flex-1">

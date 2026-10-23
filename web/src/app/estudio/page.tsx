@@ -3,14 +3,19 @@
 // y tabla de releases con acciones rápidas.
 // ============================================================
 import Link from "next/link";
-import { allReleasesAdmin } from "@/lib/store";
+import { allReleasesAdmin, getSiteConfigAdmin } from "@/lib/store";
 import { isUsingDefaultPassword } from "@/lib/estudio/session";
-import { driverActual } from "@/lib/estudio/persistence";
+import { driverActual, loadMensajes } from "@/lib/estudio/persistence";
 import { usd } from "@/lib/catalog";
 import { VisibilityToggle } from "@/components/estudio/visibility-toggle";
 
 export default async function StudioDashboard() {
-  const releases = await allReleasesAdmin();
+  const [releases, config, mensajes] = await Promise.all([
+    allReleasesAdmin(),
+    getSiteConfigAdmin(),
+    loadMensajes(),
+  ]);
+  const sinLeer = mensajes.filter((m) => !m.leido).length;
   const defaultPassword = isUsingDefaultPassword();
   const driver = driverActual();
 
@@ -62,6 +67,35 @@ export default async function StudioDashboard() {
         />
         <StatCard value={String(vinylsStock)} label="vinilos en stock" sub="suma de todas las ediciones" />
         <StatCard value={driver === "postgres" ? "Postgres" : "Archivo"} label="persistencia" sub={driver === "postgres" ? "activa y duradera" : "activa DATABASE_URL"} />
+      </div>
+
+      {/* Accesos rápidos */}
+      <div className="mt-6 grid gap-3 sm:grid-cols-2">
+        <Link
+          href="/estudio/apariencia"
+          className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4 transition hover:border-cyan-400/50"
+        >
+          <p className="text-sm font-semibold text-zinc-100">🎨 Apariencia y contenido</p>
+          <p className="mt-1 text-xs text-zinc-500">
+            Textos de la portada, orden de secciones y fondo — fondo actual: <strong className="text-cyan-300">{config.theme}</strong>.
+          </p>
+        </Link>
+        <Link
+          href="/estudio/mensajes"
+          className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4 transition hover:border-cyan-400/50"
+        >
+          <p className="text-sm font-semibold text-zinc-100">
+            ✉ Mensajes de contacto
+            {sinLeer > 0 && (
+              <span className="ml-2 rounded bg-cyan-400/15 px-1.5 py-0.5 font-mono text-[10px] font-bold text-cyan-300">
+                {sinLeer} nuevo{sinLeer === 1 ? "" : "s"}
+              </span>
+            )}
+          </p>
+          <p className="mt-1 text-xs text-zinc-500">
+            {mensajes.length} mensaje{mensajes.length === 1 ? "" : "s"} recibido{mensajes.length === 1 ? "" : "s"} del formulario de contacto.
+          </p>
+        </Link>
       </div>
 
       {/* Acciones superiores */}

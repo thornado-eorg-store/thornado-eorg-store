@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# estado local del estudio (el modo edición guarda ediciones aquí)
+/.estudio/

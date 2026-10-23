@@ -12,7 +12,7 @@
 // ============================================================
 import { cacheTag } from "next/cache";
 import { getDb } from "./db";
-import { loadEstudioState } from "./estudio/persistence";
+import { loadEstudioState, loadSiteConfig } from "./estudio/persistence";
 import {
   allReleases as demoAllReleases,
   getArtist as demoGetArtist,
@@ -21,6 +21,7 @@ import {
   type ArtistBio,
   type MasterStatus,
 } from "./catalog";
+import { normalizeSiteConfig, type SiteConfig } from "./site";
 
 // Re-export de los tipos del catálogo para las páginas que buscan en "@/lib/store".
 export type { Release, ArtistBio, MasterStatus } from "./catalog";
@@ -81,6 +82,18 @@ export async function getRelease(slug: string): Promise<Release | undefined> {
 export async function allReleasesAdmin(): Promise<Release[]> {
   const [base, estudio] = await Promise.all([baseAllReleases(), loadEstudioState()]);
   return mergeOverlay(base, estudio.releases);
+}
+
+/** Config del sitio (textos, secciones, fondo) — cacheada, tag "site". */
+export async function getSiteConfig(): Promise<SiteConfig> {
+  "use cache";
+  cacheTag("site");
+  return normalizeSiteConfig(await loadSiteConfig());
+}
+
+/** Config editable para el panel (sin caché, para prellenar el formulario). */
+export async function getSiteConfigAdmin(): Promise<SiteConfig> {
+  return normalizeSiteConfig(await loadSiteConfig());
 }
 
 // ---------- artistas y filtros ----------

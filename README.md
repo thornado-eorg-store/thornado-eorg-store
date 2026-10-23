@@ -61,10 +61,29 @@ su variable de entorno (o revisa `/api/health` para ver el estado).
 
 | Variable (en Vercel → Settings → Environment Variables) | Qué activa | Cómo obtenerla |
 |---|---|---|
-| `DATABASE_URL` | Catálogo real desde Postgres (Prisma). Sin ella, catálogo demo estático. | Neon (neon.tech, gratis): crear proyecto Postgres → copiar connection string → `npx prisma db push` |
+| `DATABASE_URL` | Catálogo real desde Postgres (Prisma) y **persistencia permanente de las ediciones del panel** (releases, apariencia y mensajes de contacto). Sin ella, catálogo demo y ediciones temporales en Vercel. | Neon (neon.tech, gratis): crear proyecto Postgres → copiar connection string → `npx prisma db push` |
 | `STRIPE_SECRET_KEY` | Checkout real con Stripe (empezar con `sk_test_…`). Sin ella, pagos simulados. | dashboard.stripe.com → Developers → API keys (modo test) |
 | `NEXT_PUBLIC_SITE_URL` | URLs de retorno correctas al Stripe Checkout y portadas en Stripe. | `https://thornado-eorg-store.vercel.app` |
 | `ESTUDIO_PASSWORD` | Define tu contraseña del panel de mantenimiento `/estudio`. Sin ella usa la provisional `thornado-2026` (cámbiala antes de publicar). | Escoge una fuerte; pégala tal cual en Vercel |
+
+## Modo Edición (panel `/estudio`) — v0.4
+
+- `/estudio` (invisible al público, `Disallow` en robots.txt): dashboard con
+  estadísticas, avisos y accesos rápidos.
+- `/estudio/nuevo` y `/estudio/release/<slug>`: editor de releases con
+  **carga de audio por pista** (preview real: MP3/M4A/WAV/FLAC ≤ 10 MB por
+  pista y ≤ 20 MB por guardado en local; ~3 MB por guardado en Vercel,
+  límite de la plataforma), portadas ≤ 3 MB, precios, tracklist editable,
+  paletas y visibilidad.
+- `/estudio/apariencia`: textos de la portada, **orden de secciones** (▲/▼),
+  franja de valor, destacado, pie de página y **fondo visual** (Aurora Neón,
+  Carbón Elegante, Vía Estelar).
+- `/estudio/mensajes`: bandeja de los mensajes de `/contacto` (leído/borrar).
+- Guardado: los cambios publican al instante (caché etiquetada
+  `catalog`/`site` + revalidación on-demand).
+- Persistencia: Postgres (con `DATABASE_URL`) o archivo JSON
+  (`web/.estudio/state.json` local; `/tmp` volátil en Vercel sin BD).
+- Error boundary amable en `/estudio/error.tsx`.
 
 ## Roadmap
 
@@ -73,6 +92,9 @@ su variable de entorno (o revisa `/api/health` para ver el estado).
   (`/api/health`, `/api/catalog`, `/api/checkout`), carrito real con
   localStorage + checkout Stripe, `/magazine`, worker de ingest
   (`workers/ingest.mjs`)
+- **F1.5 ✓ (v0.4)**: panel Modo Edición completo — uploads de audio y
+  portadas, apariencia editable (textos, orden de secciones, fondos),
+  página y bandeja de contacto, fix del bug al guardar
 - **F1 pendiente**: activar DATABASE_URL y STRIPE_SECRET_KEY (cuentas del
   usuario), entregas por URL firmada (S3/R2)
 - **F2 comunidad** → **F3 pro/alta gama**. Ver `ESPECIFICACION.md` §7.

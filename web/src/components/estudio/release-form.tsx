@@ -25,6 +25,7 @@ function toRow(t: Release["tracks"][number]): TrackRow {
     bitDepth: t.bitDepth != null ? String(t.bitDepth) : "",
     sampleRateHz: t.sampleRateHz != null ? String(t.sampleRateHz) : "",
     status: t.status,
+    uid: `u${t.id.replace(/[^a-z0-9-]/gi, "") || Math.random().toString(36).slice(2, 10)}`,
   };
 }
 
@@ -35,6 +36,7 @@ export function ReleaseForm({ release }: { release?: Release }) {
   const [rows, setRows] = useState<TrackRow[]>(
     (release?.tracks ?? []).map(toRow).concat(release?.tracks ? [] : [emptyTrackRow()])
   );
+
   const [paletteId, setPaletteId] = useState<string>(
     (PALETTES.find(
       (p) => release && p.colors[0] === release.palette[0] && p.colors[1] === release.palette[1]
@@ -42,6 +44,34 @@ export function ReleaseForm({ release }: { release?: Release }) {
   );
   // portada: preview local al elegir archivo
   const [coverPreview, setCoverPreview] = useState<string | null>(release?.coverImage ?? null);
+  // audio: archivos elegidos y audios ya guardados, por uid de fila (estable al quitar/añadir)
+  const [audioFiles, setAudioFiles] = useState<Record<string, File>>({});
+  const [audioErrors, setAudioErrors] = useState<Record<string, string>>({});
+  const [existingAudio, setExistingAudio] = useState<Record<string, string | undefined>>(() => {
+    const map: Record<string, string | undefined> = {};
+    (release?.tracks ?? []).map(toRow).forEach((r, idx) => {
+      map[r.uid ?? String(idx)] = release?.tracks[idx]?.previewUrl;
+    });
+    return map;
+  });
+
+  const localAudioErr = (uid: string, f: File | undefined) => {
+    setAudioErrors((prev) => {
+      const next = { ...prev };
+      if (!f) delete next[uid];
+      else if (!f.type.startsWith("audio/")) next[uid] = "No es un archivo de audio (usa MP3, M4A, WAV o FLAC).";
+      else if (f.size > 10_000_000) next[uid] = `Supera 10 MB (${(f.size / 1_000_000).toFixed(1)} MB).`;
+      else delete next[uid];
+      return next;
+    });
+    if (f) setAudioFiles((prev) => ({ ...prev, [uid]: f }));
+    else setAudioFiles((prev) => {
+      const next = { ...prev };
+      delete next[uid];
+      return next;
+    });
+  };
+
 
   useEffect(() => {
     if (state.ok) router.refresh();
@@ -57,6 +87,15 @@ export function ReleaseForm({ release }: { release?: Release }) {
     setRows((prev) => prev.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
   const removeRow = (i: number) => setRows((prev) => prev.filter((_, idx) => idx !== i));
   const addRow = () => setRows((prev) => [...prev, emptyTrackRow()]);
+
+  /** Tamaño aproximado de un data URL (byte a MB). */
+  const aproxMb = (dataUrl: string | undefined): string => {
+    if (!dataUrl) return "0";
+    const c = dataUrl.indexOf(",");
+    const bytes = c >= 0 ? Math.round((dataUrl.length - c - 1) * 0.75) : 0;
+    return (bytes / 1_000_000).toFixed(1);
+  };
+
 
   return (
     <form action={formAction} encType="multipart/form-data" className="pb-20">
@@ -199,9 +238,14 @@ export function ReleaseForm({ release }: { release?: Release }) {
               Tracklist ({rows.length} pistas)
             </legend>
             {err("tracks")}
+            {err("tracksAudio")}
             <div className="mt-2 space-y-3">
-              {rows.map((row, i) => (
-                <div key={i} className="grid grid-cols-[2rem_1fr_auto] gap-2 rounded-xl border border-zinc-800 bg-zinc-950/60 p-3 sm:grid-cols-[2rem_1fr_auto]">
+              {rows.map((row, i) => {
+                const rowUid = row.uid ?? `i${i}`; // filas nuevas: uid ya viene de emptyTrackRow
+                const prevAudio = existingAudio[rowUid];
+                const nuevoAudio = audioFiles[rowUid];
+                return (
+                <div key={rowUid} className="grid grid-cols-[2rem_1fr_auto] gap-2 rounded-xl border border-zinc-800 bg-zinc-950/60 p-3 sm:grid-cols-[2rem_1fr_auto]">
                   <span className="font-mono text-xs text-zinc-600 sm:pt-2">{i + 1}</span>
                   <div className="grid gap-2 sm:grid-cols-12">
                     <input
@@ -254,6 +298,46 @@ export function ReleaseForm({ release }: { release?: Release }) {
                         <option key={s.value} value={s.value}>{s.label}</option>
                       ))}
                     </select>
+
+                    {/* Audio de preview de esta pista */}
+                    <div className="col-span-2 mt-1 rounded-lg border border-zinc-800/70 bg-zinc-900/50 p-2 sm:col-span-12">
+                      <div className="flex flex-wrap items-center gap-2 text-xs">
+                        <span className="font-medium text-zinc-400">🎧 Audio del preview:</span>
+                        {prevAudio && !nuevoAudio && (
+                          <span className="rounded-full border border-emerald-400/40 bg-emerald-400/10 px-2 py-0.5 text-emerald-300">
+                            cargado (≈ {aproxMb(prevAudio)} MB)
+                          </span>
+                        )}
+                        {nuevoAudio && (
+                          <span className="rounded-full border border-cyan-400/40 bg-cyan-400/10 px-2 py-0.5 text-cyan-200">
+                            nuevo: {(nuevoAudio.name.length > 28 ? `…${nuevoAudio.name.slice(-25)}` : nuevoAudio.name)} ({(nuevoAudio.size / 1_000_000).toFixed(1)} MB)
+                          </span>
+                        )}
+                      </div>
+                      <div className="mt-1.5 flex flex-wrap items-center gap-3">
+                        <input
+                          name={`audio_${rowUid}`}
+                          type="file"
+                          accept="audio/*"
+                          onChange={(e) => localAudioErr(rowUid, e.target.files?.[0])}
+                          className="block w-full cursor-pointer text-xs text-zinc-400 file:mr-3 file:cursor-pointer file:rounded-full file:border-0 file:bg-zinc-800 file:px-3 file:py-1.5 file:text-zinc-200 file:transition hover:file:bg-zinc-700 sm:w-auto"
+                        />
+                        {prevAudio && (
+                          <label className="inline-flex cursor-pointer items-center gap-1.5 text-xs text-rose-300/90">
+                            <input
+                              type="checkbox"
+                              checked={Boolean(row.audioRemove)}
+                              onChange={(e) => updateRow(i, { audioRemove: e.target.checked || undefined })}
+                              className="h-3.5 w-3.5 accent-rose-400"
+                            />
+                            quitar audio
+                          </label>
+                        )}
+                      </div>
+                      {audioErrors[rowUid] && (
+                        <p className="mt-1 text-xs text-rose-400">{audioErrors[rowUid]}</p>
+                      )}
+                    </div>
                   </div>
                   <button
                     type="button"
@@ -264,7 +348,8 @@ export function ReleaseForm({ release }: { release?: Release }) {
                     ✕
                   </button>
                 </div>
-              ))}
+                );
+              })}
             </div>
             <button
               type="button"
@@ -273,6 +358,11 @@ export function ReleaseForm({ release }: { release?: Release }) {
             >
               + Agregar pista
             </button>
+            <p className="mt-2 text-[11px] leading-relaxed text-zinc-600">
+              El audio se reproduce de verdad en la ficha pública. Límites: 10 MB
+              por pista y 20 MB en total por guardado (publicando en línea: ~3 MB
+              por guardado). Formatos: MP3, M4A, WAV, FLAC.
+            </p>
           </fieldset>
         </div>
 
@@ -306,7 +396,7 @@ export function ReleaseForm({ release }: { release?: Release }) {
             />
             {err("cover")}
             <p className="mt-2 text-[11px] leading-relaxed text-zinc-600">
-              PNG/JPG/WEBP/SVG, máx. 1.2 MB · cuadrado recomendado. Si subes otra
+              PNG/JPG/WEBP/SVG, máx. 3 MB · cuadrado recomendado. Si subes otra
               imagen, reemplaza la actual al guardar.
             </p>
             {release?.coverImage && (

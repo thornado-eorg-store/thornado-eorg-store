@@ -1,12 +1,14 @@
 // ============================================================
-// Reproductor de previews (demo F1) — contexto cliente
-// En producción: streaming AAC desde previews, firmado y expirable.
+// Reproductor del sitio — contexto cliente.
+// Si la pista tiene un audio subido desde /estudio (previewUrl),
+// se reproduce el audio real con barra de progreso. Si aún no lo
+// tiene, se mantiene el modo demo (barras EQ animadas).
 // ============================================================
 
 "use client";
 
-import { createContext, useContext, useState } from "react";
-import type { ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
+import type { MouseEvent, ReactNode } from "react";
 
 export interface NowPlaying {
   id: string;
@@ -15,6 +17,8 @@ export interface NowPlaying {
   release: string;
   spec: string;
   palette: [string, string];
+  /** Data URL del preview subido desde /estudio. Sin ella: modo demo. */
+  audioUrl?: string;
 }
 
 interface PlayerState {
@@ -46,9 +50,13 @@ export function usePlayer(): PlayerState {
 export function PreviewButton({ item }: { item: NowPlaying }) {
   const { current, toggle } = usePlayer();
   const active = current?.id === item.id;
+  const onClick = (e: MouseEvent) => {
+    e.preventDefault();
+    toggle(item);
+  };
   return (
     <button
-      onClick={() => toggle(item)}
+      onClick={onClick}
       aria-label={active ? "Detener preview" : `Reproducir preview de ${item.trackTitle}`}
       className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-sm transition ${
         active
@@ -61,12 +69,58 @@ export function PreviewButton({ item }: { item: NowPlaying }) {
   );
 }
 
+function fmt(sec: number): string {
+  const s = Math.max(0, Math.floor(sec));
+  return `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, "0")}`;
+}
+
 /** Barra inferior persistente mientras suena un preview. */
 export function PlayerBar() {
   const { current } = usePlayer();
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [progress, setProgress] = useState(0); // 0..1 (audio real)
+  const [playing, setPlaying] = useState(false);
+  const real = Boolean(current?.audioUrl);
+
+  useEffect(() => {
+    if (!real || !current) return;
+    setProgress(0);
+    const el = audioRef.current;
+    if (el) {
+      el.currentTime = 0;
+      el.play().then(() => setPlaying(true)).catch(() => setPlaying(false));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [current?.id]);
+
   if (!current) return null;
+
+  const playPause = () => {
+    const el = audioRef.current;
+    if (!el) return;
+    if (el.paused) el.play().then(() => setPlaying(true)).catch(() => {});
+    else {
+      el.pause();
+      setPlaying(false);
+    }
+  };
+
   return (
     <div className="sticky bottom-0 z-40 border-t border-zinc-800 bg-zinc-950/95 backdrop-blur">
+      {real && (
+        <audio
+          ref={audioRef}
+          src={current.audioUrl}
+          preload="none"
+          onTimeUpdate={(e) => {
+            const el = e.currentTarget;
+            if (el.duration > 0) setProgress(el.currentTime / el.duration);
+          }}
+          onEnded={() => setPlaying(false)}
+          onPause={() => setPlaying(false)}
+          onPlay={() => setPlaying(true)}
+        />
+      )}
       <div className="mx-auto flex max-w-6xl items-center gap-4 px-4 py-3">
         {/* mini cover */}
         <div
@@ -77,15 +131,25 @@ export function PlayerBar() {
         />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <span aria-hidden className="flex items-end gap-[3px]">
-              {[0, 1, 2, 3].map((i) => (
-                <span
-                  key={i}
-                  className="eq-bar h-3 w-[3px] origin-bottom rounded-full bg-amber-400"
-                  style={{ animationDelay: `${i * 0.15}s` }}
-                />
-              ))}
-            </span>
+            {real ? (
+              <button
+                onClick={playPause}
+                aria-label={playing ? "Pausar" : "Reproducir"}
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-amber-400/60 bg-amber-400/10 text-xs text-amber-300 transition hover:bg-amber-400/25"
+              >
+                {playing ? "❚❚" : "▶"}
+              </button>
+            ) : (
+              <span aria-hidden className="flex items-end gap-[3px]">
+                {[0, 1, 2, 3].map((i) => (
+                  <span
+                    key={i}
+                    className="eq-bar h-3 w-[3px] origin-bottom rounded-full bg-amber-400"
+                    style={{ animationDelay: `${i * 0.15}s` }}
+                  />
+                ))}
+              </span>
+            )}
             <p className="truncate text-sm font-medium text-zinc-100">
               {current.trackTitle}
             </p>
@@ -93,12 +157,28 @@ export function PlayerBar() {
           <p className="truncate text-xs text-zinc-400">
             {current.artist} — {current.release} · {current.spec}
           </p>
-          <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-zinc-800">
-            <div className="bg-amber-400/80 progress-loop h-full w-1/3 rounded-full" />
-          </div>
+          {real ? (
+            <div className="mt-1.5 flex items-center gap-2">
+              <div className="h-1 flex-1 overflow-hidden rounded-full bg-zinc-800">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-amber-400 transition-[width] duration-300"
+                  style={{ width: `${Math.round(progress * 100)}%` }}
+                />
+              </div>
+              <span className="font-mono text-[10px] text-zinc-500">
+                PREVIEW REAL
+              </span>
+            </div>
+          ) : (
+            <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-zinc-800">
+              <div className="bg-amber-400/80 progress-loop h-full w-1/3 rounded-full" />
+            </div>
+          )}
         </div>
         <span className="hidden shrink-0 rounded-full border border-zinc-700 px-2.5 py-1 text-[11px] font-medium text-zinc-300 sm:inline-block">
-          PREVIEW · AAC 128 — el lossless se entrega tras la compra
+          {real
+            ? "PREVIEW · audio real — el lossless se entrega tras la compra"
+            : "PREVIEW · AAC 128 — el lossless se entrega tras la compra"}
         </span>
       </div>
     </div>

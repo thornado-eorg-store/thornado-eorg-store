@@ -16,6 +16,8 @@ export interface TrackSpec {
   bitDepth?: number;
   sampleRateHz?: number;
   status: MasterStatus;
+  /** Preview de audio subido desde /estudio (data URL). Reproducción real. */
+  previewUrl?: string;
 }
 
 export interface Release {

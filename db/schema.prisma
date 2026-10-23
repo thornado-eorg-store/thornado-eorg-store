@@ -360,10 +360,13 @@ model Collection {
 // ---------- Estudio interno (panel /estudio) ----------
 
 // Documento único con el estado del modo edición: releases creados o
-// modificados desde el panel (snapshot completo). Cuando DATABASE_URL
-// esté activa, aquí vive la persistencia de las ediciones.
+// modificados desde el panel (snapshot completo) + configuración del
+// sitio (textos/apariencia) + mensajes del formulario de contacto.
+// Cuando DATABASE_URL esté activa, aquí vive esa persistencia.
 model EstudioState {
   id        String   @id        // fijo: "estudio-releases"
   releases  Json
+  site      Json?               // SiteConfig (textos, secciones, tema)
+  messages  Json?               // mensajes de contacto (/contacto)
   updatedAt DateTime @updatedAt
 }
