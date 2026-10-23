@@ -1,0 +1,32 @@
+# Postgres + storage local para desarrollo
+# Uso: docker compose up -d
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: tienda-musica-db
+    environment:
+      POSTGRES_USER: tienda
+      POSTGRES_PASSWORD: tienda_dev
+      POSTGRES_DB: tienda_musica
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+  # MinIO = S3 compatible local (para masters, previews y covers)
+  storage:
+    image: minio/minio:latest
+    container_name: tienda-musica-storage
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: miniodev
+      MINIO_ROOT_PASSWORD: miniodev123
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+
+volumes:
+  db_data:
+  minio_data:

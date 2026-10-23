@@ -1,0 +1,12 @@
+# Raíz del repositorio (la app está en web/)
+
+# secretos
+.env
+*.env
+!.env.example
+
+# cachés del SO
+Thumbs.db
+Desktop.ini
+
+# la web tiene su propio .gitignore (node_modules, .next, etc.)

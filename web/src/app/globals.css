@@ -1,0 +1,80 @@
+/* Tema THORNADO EORG — estética futurista: espacio profundo, neón cian/violeta */
+@import "tailwindcss";
+
+:root {
+  --background: #05060f;
+  --foreground: #e4e4f4;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background:
+    radial-gradient(ellipse 80% 50% at 20% -10%, rgba(56, 189, 248, 0.14), transparent 60%),
+    radial-gradient(ellipse 70% 45% at 85% 15%, rgba(217, 70, 239, 0.12), transparent 60%),
+    var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+}
+
+/* --- Fondo futurista: grid en deriva + scanline sutil --- */
+.hero-grid {
+  background-image:
+    linear-gradient(rgba(34, 211, 238, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(162, 28, 175, 0.07) 1px, transparent 1px);
+  background-size: 44px 44px;
+  animation: grid-drift 14s linear infinite;
+}
+@keyframes grid-drift {
+  from { background-position: 0 0, 0 0; }
+  to   { background-position: 0 44px, 44px 0; }
+}
+
+.scanlines {
+  background-image: repeating-linear-gradient(
+    0deg,
+    rgba(255, 255, 255, 0.045) 0px,
+    rgba(255, 255, 255, 0.045) 1px,
+    transparent 1px,
+    transparent 4px
+  );
+}
+
+/* Glow pulsante para titulares y pipes */
+.neon-glow {
+  text-shadow: 0 0 18px rgba(34, 211, 238, 0.45), 0 0 44px rgba(162, 28, 175, 0.3);
+}
+.pulse-dot {
+  animation: pulse-dot 1.6s ease-in-out infinite;
+}
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.45; transform: scale(0.8); }
+}
+
+/* Ruleta de progreso del preview (demo) */
+@keyframes progress-loop {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(400%); }
+}
+.progress-loop {
+  animation: progress-loop 6s linear infinite;
+}
+
+/* Ecualizador en reproducción */
+@keyframes eq {
+  0%, 100% { transform: scaleY(0.25); }
+  50%      { transform: scaleY(1); }
+}
+.eq-bar {
+  animation: eq 0.9s ease-in-out infinite;
+}
+
+html {
+  scroll-behavior: smooth;
+}
