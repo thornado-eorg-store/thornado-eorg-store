@@ -47,6 +47,8 @@ export function ReleaseForm({ release }: { release?: Release }) {
   // audio: archivos elegidos y audios ya guardados, por uid de fila (estable al quitar/añadir)
   const [audioFiles, setAudioFiles] = useState<Record<string, File>>({});
   const [audioErrors, setAudioErrors] = useState<Record<string, string>>({});
+  // escucha inmediata (URL objeto local: prueba sin guardar)
+  const [audioListen, setAudioListen] = useState<Record<string, string>>({});
   const [existingAudio, setExistingAudio] = useState<Record<string, string | undefined>>(() => {
     const map: Record<string, string | undefined> = {};
     (release?.tracks ?? []).map(toRow).forEach((r, idx) => {
@@ -61,6 +63,14 @@ export function ReleaseForm({ release }: { release?: Release }) {
       if (!f) delete next[uid];
       else if (!f.type.startsWith("audio/")) next[uid] = "No es un archivo de audio (usa MP3, M4A, WAV o FLAC).";
       else if (f.size > 10_000_000) next[uid] = `Supera 10 MB (${(f.size / 1_000_000).toFixed(1)} MB).`;
+      else delete next[uid];
+      return next;
+    });
+    // escucha al instante: URL local del archivo elegido (no requiere guardar)
+    setAudioListen((prev) => {
+      const next = { ...prev };
+      if (prev[uid]) URL.revokeObjectURL(prev[uid]);
+      if (f && f.type.startsWith("audio/") && f.size <= 10_000_000) next[uid] = URL.createObjectURL(f);
       else delete next[uid];
       return next;
     });
@@ -336,6 +346,24 @@ export function ReleaseForm({ release }: { release?: Release }) {
                       </div>
                       {audioErrors[rowUid] && (
                         <p className="mt-1 text-xs text-rose-400">{audioErrors[rowUid]}</p>
+                      )}
+                      {(audioListen[rowUid] || (prevAudio && !row.audioRemove)) && (
+                        <div className="mt-1.5 flex items-center gap-2 border-t border-zinc-800/60 pt-1.5">
+                          <span className="text-[10px] font-medium uppercase tracking-wide text-amber-300/80">
+                            ▶ prueba al instante
+                          </span>
+                          <audio
+                            controls
+                            preload="auto"
+                            src={audioListen[rowUid] ?? prevAudio}
+                            className="h-8 max-w-[260px] flex-1"
+                          />
+                          <span className="text-[10px] text-zinc-600">
+                            {audioListen[rowUid]
+                              ? "desde tu archivo (antes de guardar)"
+                              : "audio ya guardado"}
+                          </span>
+                        </div>
                       )}
                     </div>
                   </div>
