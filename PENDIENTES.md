@@ -1,6 +1,9 @@
 # PENDIENTES — THORNADO EORG store
 
-Registro vivo de tareas. Última actualización: 2026-10-23 (v0.4 desplegada).
+Registro vivo de tareas. Última actualización: 2026-10-23 (v0.4.3 desplegada).
+👉 El inventario de **lo que YA funciona** está en `AVANCES.md` (leerlo antes
+de empezar cualquier sesión en este repo). Para el agente, los skills del
+proyecto están en `.opencode/skills/` (`estado-tienda`, `publicar-tienda`).
 
 ## ✅ Resuelto en v0.4 (los 6 reportes del artista)
 
@@ -30,8 +33,10 @@ Registro vivo de tareas. Última actualización: 2026-10-23 (v0.4 desplegada).
 - ✅ Probado end-to-end en local con `DATABASE_URL` de Neon: el panel guarda
   en Postgres («persistido en Postgres»), persiste al recargar y la ficha
   pública refleja los cambios.
-- ✅ Artista pegó `DATABASE_URL` en Vercel (Production) — verificación en
-  producción pendiente de confirmar tras redeploy.
+- ✅ Artista pegó `DATABASE_URL` en Vercel (Production) y la conexión se
+  verificó en producción: `/api/health` → `db: connected`, banner de
+  persistencia temporal desaparecido y guardado real con etiqueta
+  «persistido en Postgres» (v0.4.3). Estado final: PERMANENTE.
 - Sin BD: en Vercel las ediciones del panel guardan en carpeta temporal
   del serverless y **se pierden al reiniciar** (el dashboard lo avisa).
   Con BD: todo persiste (releases, apariencia y mensajes de contacto).
