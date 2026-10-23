@@ -2,7 +2,8 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ReleaseCard } from "@/components/release-cards";
-import { getArtist, releases, releasesByArtist } from "@/lib/catalog";
+import { getArtist, releasesByArtist } from "@/lib/store";
+import { releases } from "@/lib/catalog";
 
 export function generateStaticParams() {
   return releases.map((r) => ({ slug: r.artistSlug })).filter(
@@ -14,7 +15,7 @@ export async function generateMetadata({
   params,
 }: PageProps<"/artist/[slug]">): Promise<Metadata> {
   const { slug } = await params;
-  const artist = getArtist(slug);
+  const artist = await getArtist(slug);
   if (!artist) return { title: "No encontrado" };
   return { title: artist.name, description: artist.tagline };
 }
@@ -23,10 +24,10 @@ export default async function ArtistPage({
   params,
 }: PageProps<"/artist/[slug]">) {
   const { slug } = await params;
-  const artist = getArtist(slug);
+  const artist = await getArtist(slug);
   if (!artist) notFound();
 
-  const discography = releasesByArtist(slug);
+  const discography = await releasesByArtist(slug);
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10">

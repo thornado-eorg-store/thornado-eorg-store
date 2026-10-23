@@ -51,6 +51,27 @@ El flujo de agencia: cada `git push` crea una **preview URL** distinta;
 la rama `main` publica producción. Previews para decidir cambios antes
 de publicar.
 
+**Producción activa:** https://thornado-eorg-store.vercel.app
+
+## Activación de funcionalidades (sin código, solo cuentas)
+
+La app está diseñada para degradarse con elegancia: funciona 100% en
+modo demo sin configurar nada, y activa cada capacidad cuando aparece
+su variable de entorno (o revisa `/api/health` para ver el estado).
+
+| Variable (en Vercel → Settings → Environment Variables) | Qué activa | Cómo obtenerla |
+|---|---|---|
+| `DATABASE_URL` | Catálogo real desde Postgres (Prisma). Sin ella, catálogo demo estático. | Neon (neon.tech, gratis): crear proyecto Postgres → copiar connection string → `npx prisma db push` |
+| `STRIPE_SECRET_KEY` | Checkout real con Stripe (empezar con `sk_test_…`). Sin ella, pagos simulados. | dashboard.stripe.com → Developers → API keys (modo test) |
+| `NEXT_PUBLIC_SITE_URL` | URLs de retorno correctas al Stripe Checkout y portadas en Stripe. | `https://thornado-eorg-store.vercel.app` |
+
 ## Roadmap
 
-F0 ✓ (estructura base) → F1 MVP (catálogo, checkout, entregas, pipeline QA) → F2 comunidad → F3 pro/alta gama. Ver `ESPECIFICACION.md` §7.
+- **F0 ✓** estructura base, demo completa desplegada en Vercel
+- **F1 (en curso) ✓**: capa de datos con fallback (Prisma ↔ demo), API
+  (`/api/health`, `/api/catalog`, `/api/checkout`), carrito real con
+  localStorage + checkout Stripe, `/magazine`, worker de ingest
+  (`workers/ingest.mjs`)
+- **F1 pendiente**: activar DATABASE_URL y STRIPE_SECRET_KEY (cuentas del
+  usuario), entregas por URL firmada (S3/R2)
+- **F2 comunidad** → **F3 pro/alta gama**. Ver `ESPECIFICACION.md` §7.

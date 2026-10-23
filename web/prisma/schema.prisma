@@ -1,0 +1,358 @@
+// ============================================================
+// Tienda de Música — Modelo de datos v1 (PostgreSQL / Prisma)
+// Ver ESPECIFICACION.md §4
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- Usuarios y perfiles ----------
+
+enum UserRole {
+  FAN
+  ARTIST
+  LABEL
+  ADMIN
+}
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  passwordHash  String?
+  role          UserRole @default(FAN)
+  country       String?
+  displayName   String?
+  avatarUrl     String?
+  twoFactorOn   Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  purchasing    Purchase[]       @relation("Buyer")
+  salesReports  PayoutSale[]     @relation("SalesUser")
+  follows       Follow[]         @relation("FanFollows")
+  reviews       Review[]         @relation("FanReviews")
+  wishlists     WishlistItem[]   @relation("FanWishlist")
+  collections   Collection[]     @relation("FanCollections")
+  artistProfile ArtistProfile?
+  labelProfile  LabelProfile?
+}
+
+model ArtistProfile {
+  id           String  @id @default(cuid())
+  userId       String? @unique
+  user         User?   @relation(fields: [userId], references: [id])
+  name         String  @unique
+  slug         String  @unique
+  bio          String?
+  avatarUrl    String?
+  bannerUrl    String?
+  links        Json?   // { web, instagram, youtube, ... }
+  verified     Boolean @default(false)
+  totalEarned  Decimal @default(0) @db.Decimal(12, 2)
+  createdAt    DateTime @default(now())
+  releases     Release[]
+  follows      Follow[]
+  payouts      Payout[]
+}
+
+model LabelProfile {
+  id        String    @id @default(cuid())
+  userId    String?   @unique
+  user      User?     @relation(fields: [userId], references: [id])
+  name      String    @unique
+  slug      String    @unique
+  bio       String?
+  logoUrl   String?
+  createdAt DateTime  @default(now())
+  releases  Release[]
+}
+
+// ---------- Catálogo ----------
+
+enum ReleaseType {
+  ALBUM
+  EP
+  SINGLE
+  COMPILATION
+}
+
+enum ReleaseStatus {
+  DRAFT
+  PENDING   // en cola de ingest/QA espectral
+  LIVE
+  DISABLED
+}
+
+enum MasterStatus {
+  UNVERIFIED
+  VERIFIED_LOSSLESS
+  FAKE_LOSSLESS
+  NEEDS_REVIEW
+}
+
+model Release {
+  id           String       @id @default(cuid())
+  artistId     String
+  artist       ArtistProfile @relation(fields: [artistId], references: [id])
+  labelId      String?
+  label        LabelProfile? @relation(fields: [labelId], references: [id])
+  type         ReleaseType
+  title        String
+  slug         String       @unique
+  releaseDate  DateTime
+  coverArtUrl  String?
+  pricingMode  PricingMode  @default(FIXED)
+  minPrice     Decimal?     @db.Decimal(10, 2)  // para PWYW
+  preorderDate DateTime?
+  status       ReleaseStatus @default(DRAFT)
+  masterQuality Json?       // { bit_depth, sample_rate, dsd, atmos }
+  genres       String[]     @default([])        // tags de género/subgénero
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  tracks       Track[]
+  products     Product[]
+  reviews      Review[]
+  wishlists    WishlistItem[]
+  collections  Collection[] @relation("CollectionReleases")
+}
+
+enum PricingMode {
+  FIXED
+  PWYW   // name-your-price
+}
+
+model Track {
+  id            String       @id @default(cuid())
+  releaseId     String
+  release       Release      @relation(fields: [releaseId], references: [id])
+  position      Int
+  title         String
+  isrc          String?
+  bpm           Int?
+  musicalKey    String?      // "8A", "Am", ... (DJ tools)
+  durationSec   Int
+  credits       String?
+  lyrics        String?
+  masterStatus  MasterStatus @default(NEEDS_REVIEW)
+  bitDepth      Int?         // 16, 24
+  sampleRateHz  Int?         // 44100, 48000, 96000, 192000
+  spectrumUrl   String?      // espectrograma PNG generado en ingest
+  createdAt     DateTime     @default(now())
+
+  files         TrackFile[]
+  licenses      License[]
+}
+
+model TrackFile {
+  id           String     @id @default(cuid())
+  trackId      String
+  track        Track      @relation(fields: [trackId], references: [id])
+  format       AudioFormat
+  storageKey   String     // clave S3/R2
+  sizeBytes    Int?
+  createdAt    DateTime   @default(now())
+
+  @@unique([trackId, format])
+}
+
+enum AudioFormat {
+  MP3_320
+  FLAC_16
+  FLAC_24
+  WAV
+  AIFF
+  DSD
+  PREVIEW // AAC/MP3 preview para streaming
+}
+
+// ---------- Productos y venta ----------
+
+enum ProductKind {
+  DIGITAL
+  VINYL
+  CD
+  CASSETTE
+  MERCH
+  BUNDLE
+}
+
+model Product {
+  id         String      @id @default(cuid())
+  releaseId  String?
+  release    Release?    @relation(fields: [releaseId], references: [id])
+  kind       ProductKind
+  title      String
+  price      Decimal     @db.Decimal(10, 2)
+  currency   String      @default("USD") @db.Char(3)
+  stock      Int?        // solo físicos; null = ilimitado
+  imageUrl   String?
+  active     Boolean     @default(true)
+  includesDigital Boolean @default(false) // vinilo con download instantáneo
+  createdAt  DateTime    @default(now())
+
+  purchaseItems PurchaseItem[]
+}
+
+enum LicenseTier {
+  BASIC
+  PREMIUM
+  UNLIMITED
+  EXCLUSIVE
+  CUSTOM
+}
+
+model License {
+  id                 String       @id @default(cuid())
+  trackId            String
+  track              Track        @relation(fields: [trackId], references: [id])
+  tier               LicenseTier
+  price              Decimal      @db.Decimal(10, 2)
+  currency           String       @default("USD") @db.Char(3)
+  terms              String?      // resumen de derechos
+  contractTemplateId String?      // plantilla de contrato PDF
+  active             Boolean      @default(true)
+
+  purchaseItems PurchaseItem[]
+}
+
+// ---------- Compras ----------
+
+enum PurchaseStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+model Purchase {
+  id          String         @id @default(cuid())
+  buyerId     String
+  buyer       User           @relation("Buyer", fields: [buyerId], references: [id])
+  subtotal    Decimal        @db.Decimal(12, 2)
+  tax         Decimal        @default(0) @db.Decimal(12, 2)
+  total       Decimal        @db.Decimal(12, 2)
+  currency    String         @default("USD") @db.Char(3)
+  status      PurchaseStatus @default(PENDING)
+  paymentRef  String?        // Stripe payment_intent id
+  giftMessage String?
+  createdAt   DateTime       @default(now())
+
+  items PurchaseItem[]
+
+  @@index([buyerId])
+}
+
+model PurchaseItem {
+  id             String        @id @default(cuid())
+  purchaseId     String
+  purchase       Purchase      @relation(fields: [purchaseId], references: [id])
+  productId      String?
+  product        Product?      @relation(fields: [productId], references: [id])
+  licenseId      String?
+  license        License?      @relation(fields: [licenseId], references: [id])
+  licenseTier    LicenseTier?
+  unitPrice      Decimal       @db.Decimal(10, 2)
+  tipAmount      Decimal       @default(0) @db.Decimal(10, 2) // PWYW extra
+  delivered      Boolean       @default(false)
+  buyerFullName  String?       // para contratos de licencia
+  buyerEmail     String?
+
+  downloads      DownloadToken[]
+}
+
+model DownloadToken {
+  id             String       @id @default(cuid())
+  purchaseItemId String
+  purchaseItem   PurchaseItem @relation(fields: [purchaseItemId], references: [id])
+  format         AudioFormat
+  url            String       // URL firmada S3/R2
+  expiresAt      DateTime
+  downloadsUsed  Int          @default(0)
+  createdAt      DateTime     @default(now())
+}
+
+// ---------- Pagos a artistas ----------
+
+enum PayoutStatus {
+  SCHEDULED
+  IN_TRANSIT
+  PAID
+  FAILED
+}
+
+model Payout {
+  id              String        @id @default(cuid())
+  artistId        String
+  artist          ArtistProfile @relation(fields: [artistId], references: [id])
+  amount          Decimal       @db.Decimal(12, 2)
+  currency        String        @default("USD") @db.Char(3)
+  status          PayoutStatus  @default(SCHEDULED)
+  stripeTransferId String?
+  scheduledAt     DateTime?
+  paidAt          DateTime?
+  sales           PayoutSale[]
+}
+
+model PayoutSale {
+  id        String   @id @default(cuid())
+  payoutId  String
+  payout    Payout   @relation(fields: [payoutId], references: [id])
+  userId    String?
+  user      User?    @relation("SalesUser", fields: [userId], references: [id])
+  purchaseItemId String
+  netAmount Decimal  @db.Decimal(10, 2) // después de comisión y fees
+  createdAt DateTime @default(now())
+}
+
+// ---------- Comunidad ----------
+
+model Follow {
+  fanId    String
+  fan      User          @relation("FanFollows", fields: [fanId], references: [id])
+  artistId String
+  artist   ArtistProfile @relation(fields: [artistId], references: [id])
+  createdAt DateTime     @default(now())
+
+  @@id([fanId, artistId])
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  fanId     String
+  fan       User     @relation("FanReviews", fields: [fanId], references: [id])
+  releaseId String
+  release   Release  @relation(fields: [releaseId], references: [id])
+  stars     Int
+  text      String?
+  createdAt DateTime @default(now())
+
+  @@unique([fanId, releaseId])
+}
+
+model WishlistItem {
+  fanId     String
+  fan       User     @relation("FanWishlist", fields: [fanId], references: [id])
+  releaseId String
+  release   Release  @relation(fields: [releaseId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@id([fanId, releaseId])
+}
+
+model Collection {
+  id        String   @id @default(cuid())
+  fanId     String
+  fan       User     @relation("FanCollections", fields: [fanId], references: [id])
+  name      String
+  isPublic  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  releases Release[] @relation("CollectionReleases")
+}

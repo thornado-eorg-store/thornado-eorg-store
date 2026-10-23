@@ -3,13 +3,9 @@ import type { Metadata } from "next";
 import { QualityBadge } from "@/components/quality-badge";
 import { PreviewButton } from "@/components/player";
 import { Spectrum, CoverArt } from "@/components/release-cards";
-import {
-  getRelease,
-  releases,
-  usd,
-  specLabel,
-  durationLabel,
-} from "@/lib/catalog";
+import { AddToCartButton } from "@/components/cart";
+import { getRelease } from "@/lib/store";
+import { releases, usd, specLabel, durationLabel } from "@/lib/catalog";
 import { notFound } from "next/navigation";
 
 export function generateStaticParams() {
@@ -20,7 +16,7 @@ export async function generateMetadata({
   params,
 }: PageProps<"/release/[slug]">): Promise<Metadata> {
   const { slug } = await params;
-  const release = getRelease(slug);
+  const release = await getRelease(slug);
   if (!release) return { title: "No encontrado" };
   return {
     title: `${release.title} — ${release.artist}`,
@@ -32,7 +28,7 @@ export default async function ReleasePage({
   params,
 }: PageProps<"/release/[slug]">) {
   const { slug } = await params;
-  const release = getRelease(slug);
+  const release = await getRelease(slug);
   if (!release) notFound();
 
   const artist = release.artist;
@@ -101,11 +97,42 @@ export default async function ReleasePage({
               </div>
             )}
 
+            <div className="mt-5 space-y-2">
+              <AddToCartButton
+                item={{
+                  slug: release.slug,
+                  title: release.title,
+                  artist,
+                  kind: "digital",
+                  price: release.minPrice,
+                }}
+                label={
+                  release.pricingMode === "PWYW"
+                    ? `Añadir al carrito · desde ${usd(release.minPrice)}`
+                    : `Añadir al carrito · ${usd(release.minPrice)}`
+                }
+                className="w-full"
+              />
+              {release.hasVinyl && (release.vinylStock ?? 0) > 0 && (
+                <AddToCartButton
+                  item={{
+                    slug: release.slug,
+                    title: `${release.title} — vinilo`,
+                    artist,
+                    kind: "vinyl",
+                    price: release.vinylPrice!,
+                  }}
+                  label={`Añadir vinilo · ${usd(release.vinylPrice!)}`}
+                  variant="secondary"
+                  className="w-full"
+                />
+              )}
+            </div>
             <Link
               href="/cart"
-              className="mt-5 block rounded-full bg-amber-400 py-3 text-center text-sm font-semibold text-zinc-950 transition hover:bg-amber-300"
+              className="mt-3 block text-center text-xs text-cyan-300/90 transition hover:underline"
             >
-              Añadir al carrito (demo)
+              Ir al carrito →
             </Link>
             <p className="mt-3 text-center text-[11px] text-zinc-500">
               Re-descargas ilimitadas · entregas WAV/FLAC/AIFF del mismo master ·

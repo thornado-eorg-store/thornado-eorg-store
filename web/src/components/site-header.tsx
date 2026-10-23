@@ -4,8 +4,8 @@ const nav = [
   { href: "/", label: "Inicio" },
   { href: "/discover", label: "Catálogo" },
   { href: "/discover#hires", label: "Hi-Res" },
-  { href: "/discover#vinilos", label: "Vinilos" },
   { href: "/artist/thornado-eorg", label: "El Estudio" },
+  { href: "/magazine", label: "Magazine" },
 ];
 
 export function SiteHeader() {

@@ -1,18 +1,20 @@
 import Link from "next/link";
 import { ReleaseCard } from "@/components/release-cards";
-import { allReleases, releasesByTag, type Release } from "@/lib/catalog";
+import { allReleases, releasesByTag, type Release } from "@/lib/store";
 
 export const metadata = {
   title: "Descubrir",
 };
 
-export default function DiscoverPage() {
-  const catalog = allReleases();
-  const hires = releasesByTag("hires");
+export default async function DiscoverPage() {
+  const [catalog, hires, djTools, suno] = await Promise.all([
+    allReleases(),
+    releasesByTag("hires"),
+    releasesByTag("dj-tools"),
+    releasesByTag("suno-premier"),
+  ]);
   const vinilos = catalog.filter((r) => r.hasVinyl);
-  const djTools = releasesByTag("dj-tools");
   const pwyw = catalog.filter((r) => r.pricingMode === "PWYW");
-  const suno = releasesByTag("suno-premier");
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10">

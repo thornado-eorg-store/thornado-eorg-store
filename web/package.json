@@ -4,14 +4,20 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "predev": "prisma generate",
+    "build": "prisma generate && next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "ingest": "node ../workers/ingest.mjs"
   },
   "dependencies": {
+    "@prisma/client": "^6.19.3",
+    "@stripe/stripe-js": "^10.1.0",
     "next": "16.4.2",
+    "prisma": "^6.19.3",
     "react": "19.3.0",
-    "react-dom": "19.3.0"
+    "react-dom": "19.3.0",
+    "stripe": "^23.0.1"
   },
   "devDependencies": {
     "@tailwindcss/turbopack": "^4",

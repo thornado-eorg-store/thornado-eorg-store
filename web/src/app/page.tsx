@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { CoverArt, ReleaseCard } from "@/components/release-cards";
-import { allReleases, releasesByTag, liveFeed } from "@/lib/catalog";
+import { allReleases, releasesByTag } from "@/lib/store";
+import { liveFeed } from "@/lib/catalog";
 
 const valuePoints = [
   {
@@ -20,9 +21,12 @@ const valuePoints = [
   },
 ];
 
-export default function Home() {
-  const novedades = releasesByTag("novedad");
-  const hires = releasesByTag("hires");
+export default async function Home() {
+  const [novedades, hires, catalog] = await Promise.all([
+    releasesByTag("novedad"),
+    releasesByTag("hires"),
+    allReleases(),
+  ]);
   return (
     <div className="mx-auto max-w-6xl px-4">
       {/* Hero futurista */}
@@ -91,7 +95,7 @@ export default function Home() {
       <section className="py-12">
         <div className="grid items-center gap-8 rounded-2xl border border-zinc-800/70 bg-zinc-900/40 p-6 backdrop-blur-sm lg:grid-cols-[260px_1fr]">
           <div className="overflow-hidden rounded-xl border border-cyan-400/25 shadow-[0_0_40px_rgba(34,211,238,0.2)]">
-            <CoverArt release={allReleases()[0]} />
+            <CoverArt release={catalog[0]} />
           </div>
           <div>
             <p className="font-mono text-xs tracking-widest text-fuchsia-300/80">
@@ -181,7 +185,7 @@ export default function Home() {
           Catálogo completo
         </h2>
         <div className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 lg:grid-cols-6">
-          {allReleases().map((r) => (
+          {catalog.map((r) => (
             <ReleaseCard key={r.slug} release={r} />
           ))}
         </div>
