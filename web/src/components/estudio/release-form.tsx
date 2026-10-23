@@ -5,7 +5,7 @@
 // tracklist editable (añadir/quitar filas), paleta y portada.
 // Un solo envío → server action → catálogo público al día.
 // ============================================================
-import { useActionState, useState, useEffect } from "react";
+import { useActionState, useRef, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useFormStatus } from "react-dom";
 import Link from "next/link";
@@ -56,6 +56,45 @@ export function ReleaseForm({ release }: { release?: Release }) {
     });
     return map;
   });
+
+  // ===== anti-borrado tras un guardado rechazado =====
+  // React 19 limpia los campos no controlados cuando la server action
+  // termina (incluso si devuelve errores). Sin esto, un solo error de
+  // validación («la pista 1 necesita título») vaciaba título, textos y
+  // archivos: el famoso «se borra todo y queda en cero».
+  const formRef = useRef<HTMLFormElement | null>(null);
+  const snapshotRef = useRef<Map<string, FormDataEntryValue> | null>(null);
+  const formActionGuardada = (formData: FormData) => {
+    const captura: Map<string, FormDataEntryValue> = new Map();
+    formData.forEach((v, k) => {
+      if (k.startsWith("$ACTION") || k === "mode" || k === "palette" || k === "tracks_json") return;
+      captura.set(k, v);
+    });
+    snapshotRef.current = captura;
+    formAction(formData);
+  };
+  useEffect(() => {
+    if (state.ok || !snapshotRef.current || !formRef.current) return;
+    const captura = snapshotRef.current;
+    const form = formRef.current;
+    captura.forEach((v, k) => {
+      const el = form.elements.namedItem(k);
+      if (!(el instanceof HTMLInputElement) && !(el instanceof HTMLTextAreaElement) && !(el instanceof HTMLSelectElement)) return;
+      if (el instanceof HTMLInputElement && el.type === "file") {
+        if (v instanceof File) {
+          const dt = new DataTransfer();
+          dt.items.add(v);
+          el.files = dt.files;
+        }
+        return;
+      }
+      if (el instanceof HTMLInputElement && el.type === "checkbox") {
+        el.checked = v === "on" || v === "1";
+        return;
+      }
+      el.value = String(v);
+    });
+  }, [state]);
 
   const localAudioErr = (uid: string, f: File | undefined) => {
     setAudioErrors((prev) => {
@@ -108,7 +147,7 @@ export function ReleaseForm({ release }: { release?: Release }) {
 
 
   return (
-    <form action={formAction} encType="multipart/form-data" className="pb-20">
+    <form ref={formRef} action={formActionGuardada} encType="multipart/form-data" noValidate className="pb-20">
       <input type="hidden" name="mode" value={mode} />
       <input type="hidden" name="palette" value={`${palette.colors[0]}|${palette.colors[1]}`} />
       <input
