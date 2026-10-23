@@ -24,9 +24,18 @@ Registro vivo de tareas. Última actualización: 2026-10-23 (v0.4 desplegada).
 
 ## 🔴 Alta prioridad (confirmadas con el artista)
 
-### 1. Activar base de datos real (cuenta del artista)
-- Crear proyecto gratis en neon.tech → copiar connection string →
-  pegarla como `DATABASE_URL` en Vercel → redeploy → `npx prisma db push`.
+### 1. Activar base de datos real — NEON YA CREADO (2026-10, v0.4.2 en curso)
+- ✅ Cuenta Neon creada por el artista. Proyecto creado y tablas aplicadas
+  vía `prisma db push` (cadena verificada funcionando).
+- ✅ Probado end-to-end en local con `DATABASE_URL` de Neon: el panel guarda
+  en Postgres («persistido en Postgres»), persiste al recargar y la ficha
+  pública refleja los cambios.
+- ⏳ CASI LISTO: falta que el artista pegue la connection string como
+  `DATABASE_URL` en Vercel (Settings → Environment Variables → Production,
+  también Preview) y haga Redeploy. Con la variable definida, el driver
+  postgres de persistence.ts se activa automáticamente (sin cambios de
+  código): releases, apariencia y mensajes pasan a persistir de verdad en
+  producción.
 - Sin BD: en Vercel las ediciones del panel guardan en carpeta temporal
   del serverless y **se pierden al reiniciar** (el dashboard lo avisa).
   Con BD: todo persiste (releases, apariencia y mensajes de contacto).
